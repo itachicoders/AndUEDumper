@@ -37,12 +37,24 @@ jobs:
         cd AndUEDumper
         export NDK_HOME=$ANDROID_NDK_HOME
         echo "Building with NDK_HOME=$NDK_HOME"
-        make
+        cat Makefile || echo "Makefile not found"
+        echo "=== Starting build ==="
+        make 2>&1 | tee build.log
+        echo "=== Build completed ==="
     
     - name: List build output
       run: |
-        echo "Build directory contents:"
-        find AndUEDumper -name "UEDump3r" -o -name "*.so" | head -20
+        echo "=== Full directory tree ==="
+        tree AndUEDumper || find AndUEDumper -type f | head -50
+        echo ""
+        echo "=== Searching for executables ==="
+        find AndUEDumper -type f -executable
+        echo ""
+        echo "=== Searching for UEDump3r ==="
+        find AndUEDumper -name "*UEDump3r*" -o -name "*Dump*"
+        echo ""
+        echo "=== All files in AndUEDumper ==="
+        ls -laR AndUEDumper/ | head -100
     
     - name: Create release structure
       run: |
