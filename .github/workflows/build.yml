@@ -22,64 +22,79 @@ jobs:
       uses: nttld/setup-ndk@v1
       with:
         ndk-version: r26b
-        add-to-path: false
+        add-to-path: true
     
-    - name: Install make
-      run: sudo apt-get update && sudo apt-get install -y make
-    
-    - name: Set NDK_HOME environment variable
+    - name: Verify NDK installation
       run: |
-        echo "NDK_HOME=$ANDROID_NDK_HOME" >> $GITHUB_ENV
-        echo "NDK path: $ANDROID_NDK_HOME"
-        ls -la $ANDROID_NDK_HOME
+        echo "ANDROID_NDK_HOME: $ANDROID_NDK_HOME"
+        echo "NDK_HOME: $NDK_HOME"
+        ls -la $ANDROID_NDK_HOME || echo "ANDROID_NDK_HOME not found"
+        which ndk-build || echo "ndk-build not in PATH"
+        find $ANDROID_NDK_HOME -name "ndk-build" || echo "ndk-build not found"
     
     - name: Build Android (all architectures)
       run: |
         cd AndUEDumper
         export NDK_HOME=$ANDROID_NDK_HOME
-        make clean
+        echo "Building with NDK_HOME=$NDK_HOME"
         make
     
     - name: List build output
       run: |
         echo "Build directory contents:"
-        ls -la AndUEDumper/build/
-        find AndUEDumper/build/ -type f -name "UEDump3r"
+        find AndUEDumper -name "UEDump3r" -o -name "*.so" | head -20
+    
+    - name: Create release structure
+      run: |
+        mkdir -p release/arm64-v8a
+        mkdir -p release/armeabi-v7a
+        mkdir -p release/x86_64
+        mkdir -p release/x86
+        # Find and copy binaries
+        find AndUEDumper -path "*/arm64-v8a/*" -name "UEDump3r" -exec cp {} release/arm64-v8a/ \; || true
+        find AndUEDumper -path "*/armeabi-v7a/*" -name "UEDump3r" -exec cp {} release/armeabi-v7a/ \; || true
+        find AndUEDumper -path "*/x86_64/*" -name "UEDump3r" -exec cp {} release/x86_64/ \; || true
+        find AndUEDumper -path "*/x86/*" -name "UEDump3r" -exec cp {} release/x86/ \; || true
+        ls -R release/
     
     - name: Upload Android ARM64 artifact
       uses: actions/upload-artifact@v4
       if: success()
       with:
         name: UEDump3r-android-arm64
-        path: AndUEDumper/build/arm64-v8a/UEDump3r
+        path: release/arm64-v8a/*
+        if-no-files-found: warn
     
     - name: Upload Android ARMv7 artifact
       uses: actions/upload-artifact@v4
       if: success()
       with:
         name: UEDump3r-android-armv7
-        path: AndUEDumper/build/armeabi-v7a/UEDump3r
+        path: release/armeabi-v7a/*
+        if-no-files-found: warn
     
     - name: Upload Android x86_64 artifact
       uses: actions/upload-artifact@v4
       if: success()
       with:
         name: UEDump3r-android-x86_64
-        path: AndUEDumper/build/x86_64/UEDump3r
+        path: release/x86_64/*
+        if-no-files-found: warn
     
     - name: Upload Android x86 artifact
       uses: actions/upload-artifact@v4
       if: success()
       with:
         name: UEDump3r-android-x86
-        path: AndUEDumper/build/x86/UEDump3r
+        path: release/x86/*
+        if-no-files-found: warn
     
-    - name: Upload all builds as single archive
+    - name: Upload all builds
       uses: actions/upload-artifact@v4
       if: success()
       with:
         name: UEDump3r-android-all
-        path: AndUEDumper/build/
+        path: release/
 
   release:
     name: Create Release
@@ -93,15 +108,17 @@ jobs:
     
     - name: Prepare release files
       run: |
-        mkdir -p release
-        cp UEDump3r-android-arm64/UEDump3r release/UEDump3r-arm64-v8a
-        cp UEDump3r-android-armv7/UEDump3r release/UEDump3r-armeabi-v7a
-        cp UEDump3r-android-x86_64/UEDump3r release/UEDump3r-x86_64
-        cp UEDump3r-android-x86/UEDump3r release/UEDump3r-x86
+        mkdir -p release_files
+        # Rename files with architecture suffix
+        [ -f UEDump3r-android-arm64/UEDump3r ] && cp UEDump3r-android-arm64/UEDump3r release_files/UEDump3r-arm64-v8a
+        [ -f UEDump3r-android-armv7/UEDump3r ] && cp UEDump3r-android-armv7/UEDump3r release_files/UEDump3r-armeabi-v7a
+        [ -f UEDump3r-android-x86_64/UEDump3r ] && cp UEDump3r-android-x86_64/UEDump3r release_files/UEDump3r-x86_64
+        [ -f UEDump3r-android-x86/UEDump3r ] && cp UEDump3r-android-x86/UEDump3r release_files/UEDump3r-x86
+        ls -lah release_files/
     
     - name: Create Release
       uses: softprops/action-gh-release@v1
       with:
-        files: release/*
+        files: release_files/*
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
