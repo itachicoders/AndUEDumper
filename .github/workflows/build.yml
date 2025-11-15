@@ -58,55 +58,65 @@ jobs:
     
     - name: Create release structure
       run: |
-        mkdir -p release/arm64-v8a
-        mkdir -p release/armeabi-v7a
-        mkdir -p release/x86_64
-        mkdir -p release/x86
-        # Find and copy binaries
-        find AndUEDumper -path "*/arm64-v8a/*" -name "UEDump3r" -exec cp {} release/arm64-v8a/ \; || true
-        find AndUEDumper -path "*/armeabi-v7a/*" -name "UEDump3r" -exec cp {} release/armeabi-v7a/ \; || true
-        find AndUEDumper -path "*/x86_64/*" -name "UEDump3r" -exec cp {} release/x86_64/ \; || true
-        find AndUEDumper -path "*/x86/*" -name "UEDump3r" -exec cp {} release/x86/ \; || true
-        ls -R release/
+        mkdir -p release
+        
+        # Copy executables with correct names
+        cp AndUEDumper/libs/arm64-v8a/UEDump3r_arm64 release/UEDump3r-arm64-v8a
+        cp AndUEDumper/libs/armeabi-v7a/UEDump3r_arm release/UEDump3r-armeabi-v7a
+        cp AndUEDumper/libs/x86_64/UEDump3r_x86_64 release/UEDump3r-x86_64
+        cp AndUEDumper/libs/x86/UEDump3r_x86 release/UEDump3r-x86
+        
+        # Copy shared libraries
+        cp AndUEDumper/libs/arm64-v8a/libshared_UEDump3r_arm64.so release/libshared_UEDump3r_arm64.so
+        cp AndUEDumper/libs/armeabi-v7a/libshared_UEDump3r_arm.so release/libshared_UEDump3r_arm.so
+        cp AndUEDumper/libs/x86_64/libshared_UEDump3r_x86_64.so release/libshared_UEDump3r_x86_64.so
+        cp AndUEDumper/libs/x86/libshared_UEDump3r_x86.so release/libshared_UEDump3r_x86.so
+        
+        echo "=== Release files ==="
+        ls -lah release/
     
     - name: Upload Android ARM64 artifact
       uses: actions/upload-artifact@v4
       if: success()
       with:
         name: UEDump3r-android-arm64
-        path: release/arm64-v8a/*
-        if-no-files-found: warn
+        path: |
+          release/UEDump3r-arm64-v8a
+          release/libshared_UEDump3r_arm64.so
     
     - name: Upload Android ARMv7 artifact
       uses: actions/upload-artifact@v4
       if: success()
       with:
         name: UEDump3r-android-armv7
-        path: release/armeabi-v7a/*
-        if-no-files-found: warn
+        path: |
+          release/UEDump3r-armeabi-v7a
+          release/libshared_UEDump3r_arm.so
     
     - name: Upload Android x86_64 artifact
       uses: actions/upload-artifact@v4
       if: success()
       with:
         name: UEDump3r-android-x86_64
-        path: release/x86_64/*
-        if-no-files-found: warn
+        path: |
+          release/UEDump3r-x86_64
+          release/libshared_UEDump3r_x86_64.so
     
     - name: Upload Android x86 artifact
       uses: actions/upload-artifact@v4
       if: success()
       with:
         name: UEDump3r-android-x86
-        path: release/x86/*
-        if-no-files-found: warn
+        path: |
+          release/UEDump3r-x86
+          release/libshared_UEDump3r_x86.so
     
     - name: Upload all builds
       uses: actions/upload-artifact@v4
       if: success()
       with:
-        name: UEDump3r-android-all
-        path: release/
+        name: UEDump3r-android-all-architectures
+        path: release/*
 
   release:
     name: Create Release
@@ -121,11 +131,12 @@ jobs:
     - name: Prepare release files
       run: |
         mkdir -p release_files
-        # Rename files with architecture suffix
-        [ -f UEDump3r-android-arm64/UEDump3r ] && cp UEDump3r-android-arm64/UEDump3r release_files/UEDump3r-arm64-v8a
-        [ -f UEDump3r-android-armv7/UEDump3r ] && cp UEDump3r-android-armv7/UEDump3r release_files/UEDump3r-armeabi-v7a
-        [ -f UEDump3r-android-x86_64/UEDump3r ] && cp UEDump3r-android-x86_64/UEDump3r release_files/UEDump3r-x86_64
-        [ -f UEDump3r-android-x86/UEDump3r ] && cp UEDump3r-android-x86/UEDump3r release_files/UEDump3r-x86
+        # Copy with original names for release
+        cp release/UEDump3r-arm64-v8a release_files/
+        cp release/UEDump3r-armeabi-v7a release_files/
+        cp release/UEDump3r-x86_64 release_files/
+        cp release/UEDump3r-x86 release_files/
+        cp release/*.so release_files/
         ls -lah release_files/
     
     - name: Create Release
